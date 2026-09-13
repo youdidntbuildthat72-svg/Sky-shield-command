@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#050713">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Skyshield Command</title>
+  <meta name="description" content="A touch-first arcade defense game. Tap the sky to launch interceptors and protect your cities.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050713'/%3E%3Cpath d='M8 48h48M32 46V11M18 27l14-16 14 16' stroke='%235af7ff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='36' r='10' fill='%23ff4db8' opacity='.8'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:dark;--ink:#f4fbff;--cyan:#5af7ff;--pink:#ff4db8;--gold:#ffd166;--panel:rgba(7,12,31,.76)}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#050713;color:var(--ink);font-family:ui-rounded,"SF Pro Rounded","Avenir Next",system-ui,sans-serif;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+    body{position:fixed;inset:0}
+    #game{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;background:#050713}
+    #hud{position:absolute;z-index:4;top:0;left:0;right:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));pointer-events:none;background:linear-gradient(180deg,rgba(5,7,19,.88),transparent)}
+    .stat{font-size:clamp(13px,2.4vw,18px);font-weight:800;letter-spacing:.09em;text-transform:uppercase;text-shadow:0 0 14px rgba(90,247,255,.35)}
+    .stat span{color:var(--cyan);font-variant-numeric:tabular-nums}
+    #score{text-align:left}#wave{text-align:center}#ammo{text-align:right}
+    #controls{position:absolute;z-index:5;right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:10px}
+    button{min-width:54px;min-height:54px;border:1px solid rgba(90,247,255,.55);border-radius:50%;background:rgba(6,12,31,.82);color:var(--ink);font:800 12px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 0 22px rgba(90,247,255,.12),inset 0 0 18px rgba(90,247,255,.07);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);touch-action:manipulation}
+    button:active{transform:scale(.94);background:rgba(90,247,255,.2)}
+    #overlay{position:absolute;z-index:10;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 38%,rgba(20,50,91,.55),rgba(5,7,19,.94) 65%);touch-action:manipulation;cursor:pointer}
+    #overlay.hidden{display:none}
+    .card{width:min(560px,92vw);text-align:center;padding:clamp(24px,6vw,48px);border:1px solid rgba(90,247,255,.35);border-radius:28px;background:var(--panel);box-shadow:0 0 70px rgba(41,121,255,.17),inset 0 0 50px rgba(90,247,255,.035);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .eyebrow{margin:0 0 12px;color:var(--pink);font-size:13px;font-weight:900;letter-spacing:.22em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(38px,10vw,78px);line-height:.88;letter-spacing:-.06em;text-transform:uppercase;text-shadow:0 0 28px rgba(90,247,255,.38)}
+    .instructions{max-width:420px;margin:22px auto 26px;color:#c7d5e6;font-size:clamp(16px,3.4vw,20px);line-height:1.45}
+    #start{min-width:220px;border-radius:999px;padding:0 28px;background:var(--cyan);border-color:var(--cyan);color:#041016;font-size:16px;box-shadow:0 0 34px rgba(90,247,255,.35)}
+    #start:active{background:#a8fbff}
+    #message{position:absolute;z-index:6;left:50%;top:18%;transform:translateX(-50%);font-size:clamp(22px,6vw,52px);font-weight:950;letter-spacing:.1em;text-transform:uppercase;text-align:center;text-shadow:0 0 30px currentColor;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+    #message.show{opacity:1}
+    #power{position:absolute;z-index:5;left:50%;top:max(50px,calc(env(safe-area-inset-top) + 42px));transform:translateX(-50%) scale(.9);padding:8px 14px;border:1px solid rgba(156,255,87,.65);border-radius:999px;background:rgba(7,22,17,.78);color:#9cff57;font-size:13px;font-weight:950;letter-spacing:.11em;text-transform:uppercase;box-shadow:0 0 24px rgba(156,255,87,.2);opacity:0;transition:.2s;pointer-events:none;white-space:nowrap}
+    #power.show{opacity:1;transform:translateX(-50%) scale(1)}
+    @media (max-height:500px){.card{padding:22px 30px}.instructions{margin:14px auto 18px}#controls{bottom:10px}.stat{font-size:13px}}
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Skyshield Command game area"></canvas>
+  <div id="hud" aria-live="polite">
+    <div id="score" class="stat">Score <span>0</span></div>
+    <div id="wave" class="stat">Wave <span>1</span></div>
+    <div id="ammo" class="stat">Missiles <span>30</span></div>
+  </div>
+  <div id="message"></div><div id="power">Twin strike <span>0</span></div>
+  <div id="controls"><button id="sound" type="button" aria-label="Turn sound off">Mute</button><button id="pause" type="button" aria-label="Pause game">Pause</button></div>
+  <div id="overlay" role="button" tabindex="0" aria-label="Start Skyshield Command">
+    <div class="card">
+      <p class="eyebrow">Touch arcade defense</p>
+      <h1 id="title">Skyshield<br>Command</h1>
+      <p id="instructions" class="instructions">Tap the sky to fire. Blast the occasional UFO for bonus points, a full missile refill, and twin-strike shots.</p>
+      <button id="start" type="button">Tap to play</button>
+    </div>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+    const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
+    const overlay=document.getElementById('overlay'),startBtn=document.getElementById('start'),pauseBtn=document.getElementById('pause'),soundBtn=document.getElementById('sound');
+    const scoreEl=document.querySelector('#score span'),waveEl=document.querySelector('#wave span'),ammoEl=document.querySelector('#ammo span');
+    const message=document.getElementById('message'),powerEl=document.getElementById('power'),powerCount=document.querySelector('#power span'),title=document.getElementById('title'),instructions=document.getElementById('instructions');
+    let W=0,H=0,DPR=1,groundY=0,last=0,running=false,paused=false,gameOver=false,score=0,wave=1,spawnLeft=0,spawnTimer=0,between=false,stars=[];
+    let enemies=[],rockets=[],blasts=[],particles=[],ufo=null,ufoTimer=10,powerShots=0,audioCtx=null,soundOn=true;
+    const cities=Array.from({length:6},(_,i)=>({slot:i,alive:true}));
+    const bases=Array.from({length:3},(_,i)=>({slot:i,ammo:10,alive:true}));
+    const colors=['#5af7ff','#ff4db8','#ffd166','#9cff57'];
+    function resize(){
+      const rect=document.documentElement.getBoundingClientRect();W=Math.max(320,rect.width);H=Math.max(320,rect.height);DPR=Math.min(2,window.devicePixelRatio||1);
+      canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);groundY=H*.84;
+      stars=Array.from({length:Math.min(120,Math.floor(W*H/6000))},(_,i)=>({x:(i*73.31%1)*W,y:(i*29.73%1)*groundY*.88,a:.2+(i%7)/10,r:i%5===0?1.6:.8}));
+    }
+    function baseX(i){return [W*.09,W*.5,W*.91][i]}
+    function cityX(i){return [W*.2,W*.3,W*.4,W*.6,W*.7,W*.8][i]}
+    function ensureAudio(){if(!soundOn)return null;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!audioCtx)audioCtx=new AC();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx}
+    function tone(from,to,duration,type='sine',volume=.08,delay=0){const ac=ensureAudio();if(!ac)return;const now=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(from,now);o.frequency.exponentialRampToValueAtTime(Math.max(20,to),now+duration);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(volume,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+duration);o.connect(g).connect(ac.destination);o.start(now);o.stop(now+duration+.02)}
+    function soundLaunch(auto=false){tone(auto?980:720,auto?210:120,auto?.22:.3,auto?'square':'sawtooth',auto?.045:.075)}
+    function soundExplosion(big=false){const ac=ensureAudio();if(!ac)return;const d=big?.62:.36,buffer=ac.createBuffer(1,Math.floor(ac.sampleRate*d),ac.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,2.4);const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();filter.type='lowpass';filter.frequency.setValueAtTime(big?520:850,ac.currentTime);filter.frequency.exponentialRampToValueAtTime(90,ac.currentTime+d);gain.gain.setValueAtTime(big?.22:.13,ac.currentTime);gain.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);src.buffer=buffer;src.connect(filter).connect(gain).connect(ac.destination);src.start();tone(big?110:150,42,d,'sine',big?.13:.07)}
+    function soundUfo(){tone(440,760,.16,'square',.035);tone(760,390,.2,'square',.03,.17)}
+    function soundPower(){tone(330,660,.22,'triangle',.08);tone(440,880,.28,'triangle',.07,.12);tone(660,1320,.34,'triangle',.06,.24)}
+    function reset(){
+      score=0;wave=1;gameOver=false;paused=false;enemies=[];rockets=[];blasts=[];particles=[];ufo=null;ufoTimer=8+Math.random()*7;powerShots=0;cities.forEach(c=>c.alive=true);bases.forEach(b=>{b.alive=true;b.ammo=10});updateHud();beginWave();pauseBtn.textContent='Pause';
+    }
+    function beginWave(){between=false;spawnLeft=5+wave*3;spawnTimer=.65;showMessage('Wave '+wave,'#5af7ff',1100)}
+    function updateHud(){scoreEl.textContent=score;waveEl.textContent=wave;ammoEl.textContent=bases.reduce((n,b)=>n+b.ammo,0);powerCount.textContent=powerShots;powerEl.classList.toggle('show',powerShots>0)}
+    function showMessage(text,color,duration){message.textContent=text;message.style.color=color;message.classList.add('show');clearTimeout(showMessage.t);showMessage.t=setTimeout(()=>message.classList.remove('show'),duration)}
+    function startGame(e){if(e){e.preventDefault();e.stopPropagation()}if(running)return;ensureAudio();overlay.classList.add('hidden');reset();running=true;last=performance.now();requestAnimationFrame(loop)}
+    function showEnd(){
+      running=false;gameOver=true;title.innerHTML='City<br>Lost';instructions.textContent='Final score: '+score+'. Tap below to defend the skyline again.';startBtn.textContent='Play again';overlay.classList.remove('hidden');
+    }
+    function randomTarget(){
+      const liveCities=cities.filter(c=>c.alive),liveBases=bases.filter(b=>b.alive);const targets=liveCities.concat(liveBases);if(!targets.length)return{x:W/2,y:groundY};const t=targets[Math.floor(Math.random()*targets.length)];return{x:'ammo'in t?baseX(t.slot):cityX(t.slot),y:groundY+8,target:t};
+    }
+    function spawnEnemy(){
+      const target=randomTarget(),x=20+Math.random()*(W-40),split=wave>2&&Math.random()<Math.min(.2,wave*.025);enemies.push({x,y:-10,sx:x,sy:-10,tx:target.x,ty:target.y,target:target.target,p:0,speed:(.045+wave*.004)*(split?.8:1),split,splitDone:false,hue:Math.random()<.35?'#ff4db8':'#ffd166'});
+    }
+    function spawnUfo(){const dir=Math.random()<.5?1:-1;ufo={x:dir>0?-45:W+45,y:H*(.18+Math.random()*.2),dir,speed:70+wave*4,beep:1.1,dead:false};soundUfo();showMessage('UFO incoming','#9cff57',850)}
+    function awardUfo(ship){if(!ship||ship.dead)return;ship.dead=true;score+=1000;powerShots=Math.min(16,powerShots+8);bases.forEach(b=>{if(b.alive)b.ammo=10});sparks(ship.x,ship.y,'#9cff57',34);explode(ship.x,ship.y,76,'#9cff57');soundPower();showMessage('UFO +1000 · Twin ×8','#9cff57',1700);updateHud()}
+    function killEnemy(e){if(!e||e.dead)return;e.dead=true;score+=e.split?175:100;sparks(e.x,e.y,e.hue,10);explode(e.x,e.y,52,e.hue);updateHud()}
+    function fire(x,y){
+      if(!running||paused||y>groundY-8)return;let available=bases.filter(b=>b.alive&&b.ammo>0);if(!available.length){showMessage('Out of missiles','#ff4db8',700);return}
+      ensureAudio();available.sort((a,b)=>Math.abs(baseX(a.slot)-x)-Math.abs(baseX(b.slot)-x));const b=available[0],origin=baseX(b.slot),ufoLock=ufo&&!ufo.dead&&Math.hypot(ufo.x-x,ufo.y-y)<70?ufo:null;b.ammo--;rockets.push({x:origin,y:groundY,tx:x,ty:y,p:0,speed:1.65,ufoLock});soundLaunch();
+      const targets=enemies.filter(e=>!e.dead);if(powerShots>0&&targets.length){const lock=targets[Math.floor(Math.random()*targets.length)];rockets.push({x:origin,y:groundY,tx:lock.x,ty:lock.y,p:0,speed:1.85,lock,auto:true});powerShots--;soundLaunch(true)}updateHud();
+    }
+    function explode(x,y,max=56,color='#5af7ff'){blasts.push({x,y,r:2,max,life:1,color,hit:new Set()});const now=performance.now();if(!explode.last||now-explode.last>70){explode.last=now;soundExplosion(max>=60)}}
+    function sparks(x,y,color,count=12){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=25+Math.random()*80;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.5,color})}}
+    function destroyTarget(t,x){
+      if(!t||!t.alive)return;t.alive=false;sparks(x,groundY,'#ff4db8',22);explode(x,groundY,34,'#ff4db8');
+    }
+    function update(dt){
+      if(paused)return;
+      if(spawnLeft>0){spawnTimer-=dt;if(spawnTimer<=0){spawnEnemy();spawnLeft--;spawnTimer=Math.max(.28,1.05-wave*.06)*(.65+Math.random()*.7)}}
+      if(!ufo){ufoTimer-=dt;if(ufoTimer<=0)spawnUfo()}else if(!ufo.dead){ufo.x+=ufo.dir*ufo.speed*dt;ufo.beep-=dt;if(ufo.beep<=0){soundUfo();ufo.beep=1.1}if((ufo.dir>0&&ufo.x>W+55)||(ufo.dir<0&&ufo.x<-55)){ufo=null;ufoTimer=12+Math.random()*12}}
+      enemies.forEach(e=>{
+        e.p+=e.speed*dt;e.x=e.sx+(e.tx-e.sx)*e.p;e.y=e.sy+(e.ty-e.sy)*e.p;
+        if(e.split&&!e.splitDone&&e.p>.45){e.splitDone=true;for(let k=0;k<2;k++){const t=randomTarget();enemies.push({x:e.x,y:e.y,sx:e.x,sy:e.y,tx:t.x,ty:t.y,target:t.target,p:0,speed:e.speed*1.35,split:false,splitDone:true,hue:'#ff4db8'})}}
+        if(e.p>=1){e.dead=true;destroyTarget(e.target,e.tx)}
+      });
+      rockets.forEach(r=>{if(r.lock&&!r.lock.dead){r.tx=r.lock.x;r.ty=r.lock.y}if(r.ufoLock&&!r.ufoLock.dead){r.tx=r.ufoLock.x;r.ty=r.ufoLock.y}r.p+=r.speed*dt;r.x+=(r.tx-r.x)*Math.min(1,dt*8);r.y+=(r.ty-r.y)*Math.min(1,dt*8);if(r.p>=1||Math.hypot(r.tx-r.x,r.ty-r.y)<7){r.dead=true;if(r.ufoLock&&!r.ufoLock.dead)awardUfo(r.ufoLock);else if(r.lock&&!r.lock.dead)killEnemy(r.lock);else explode(r.tx,r.ty,Math.min(72,Math.max(48,W*.055)))}});
+      blasts.forEach(b=>{
+        b.life-=dt*.72;const phase=1-b.life;b.r=b.max*Math.sin(Math.PI*Math.max(0,phase));
+        enemies.forEach(e=>{if(!e.dead&&!b.hit.has(e)&&Math.hypot(e.x-b.x,e.y-b.y)<b.r){b.hit.add(e);killEnemy(e)}});if(ufo&&!ufo.dead&&Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+18)awardUfo(ufo)
+      });
+      particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=55*dt});
+      enemies=enemies.filter(e=>!e.dead);rockets=rockets.filter(r=>!r.dead);blasts=blasts.filter(b=>b.life>0);particles=particles.filter(p=>p.life>0);if(ufo&&ufo.dead){ufo=null;ufoTimer=14+Math.random()*14}
+      if(!cities.some(c=>c.alive)){showEnd();return}
+      if(spawnLeft===0&&enemies.length===0&&!between){between=true;setTimeout(()=>{if(!running||gameOver)return;score+=cities.filter(c=>c.alive).length*250+bases.reduce((n,b)=>n+b.ammo,0)*20;wave++;bases.forEach(b=>{if(b.alive)b.ammo=10});updateHud();beginWave()},1700)}
+    }
+    function draw(){
+      const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#050713');g.addColorStop(.55,'#101535');g.addColorStop(1,'#28133a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      stars.forEach(s=>{ctx.globalAlpha=s.a;ctx.fillStyle='#d9faff';ctx.fillRect(s.x,s.y,s.r,s.r)});ctx.globalAlpha=1;
+      const glow=ctx.createLinearGradient(0,groundY-60,0,groundY+40);glow.addColorStop(0,'rgba(255,77,184,0)');glow.addColorStop(1,'rgba(255,77,184,.18)');ctx.fillStyle=glow;ctx.fillRect(0,groundY-60,W,100);
+      ctx.fillStyle='#080b18';ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(0,groundY+14);for(let x=0;x<=W;x+=W/20)ctx.lineTo(x,groundY-(x%(W/5)===0?10:Math.random()*3));ctx.lineTo(W,H);ctx.fill();
+      ctx.strokeStyle='rgba(90,247,255,.22)';ctx.lineWidth=1;for(let i=0;i<6;i++){const y=groundY+(H-groundY)*(i/5);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+      cities.forEach(c=>drawCity(cityX(c.slot),c.alive));bases.forEach(b=>drawBase(baseX(b.slot),b));
+      if(ufo&&!ufo.dead)drawUfo(ufo);
+      enemies.forEach(e=>{ctx.strokeStyle=e.hue;ctx.lineWidth=1.5;ctx.shadowColor=e.hue;ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(e.sx,e.sy);ctx.lineTo(e.x,e.y);ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(e.x,e.y,2.2,0,Math.PI*2);ctx.fill()});
+      rockets.forEach(r=>{const c=r.auto?'#9cff57':'#5af7ff';ctx.strokeStyle=c;ctx.lineWidth=r.auto?3:2;ctx.shadowColor=c;ctx.shadowBlur=10;ctx.beginPath();ctx.moveTo(r.x,r.y+16);ctx.lineTo(r.x,r.y);ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.fillRect(r.x-1.5,r.y-1.5,3,3)});
+      blasts.forEach(b=>{ctx.strokeStyle=b.color;ctx.fillStyle=b.color+'20';ctx.lineWidth=3;ctx.shadowColor=b.color;ctx.shadowBlur=18;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.shadowBlur=0});
+      particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,2,2)});ctx.globalAlpha=1;
+      if(paused){ctx.fillStyle='rgba(5,7,19,.55)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.font='900 '+Math.min(60,W*.1)+'px system-ui';ctx.textAlign='center';ctx.fillText('PAUSED',W/2,H/2)}
+    }
+    function drawUfo(s){ctx.save();ctx.translate(s.x,s.y);ctx.shadowColor='#9cff57';ctx.shadowBlur=20;ctx.fillStyle='#9cff57';ctx.beginPath();ctx.ellipse(0,4,30,9,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#c8ffff';ctx.beginPath();ctx.ellipse(0,-2,13,9,0,Math.PI,0);ctx.fill();ctx.fillStyle='#ff4db8';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(i*16,7,2.5,0,Math.PI*2);ctx.fill()}ctx.restore()}
+    function drawCity(x,alive){if(!alive){ctx.fillStyle='#321528';ctx.fillRect(x-18,groundY-3,36,5);return}ctx.fillStyle='#5af7ff';ctx.shadowColor='#5af7ff';ctx.shadowBlur=9;ctx.fillRect(x-19,groundY-17,9,17);ctx.fillRect(x-8,groundY-25,12,25);ctx.fillRect(x+6,groundY-13,13,13);ctx.fillStyle='#ffd166';ctx.fillRect(x-5,groundY-20,3,3);ctx.fillRect(x+10,groundY-9,3,3);ctx.shadowBlur=0}
+    function drawBase(x,b){ctx.fillStyle=b.alive?'#ff4db8':'#321528';ctx.shadowColor='#ff4db8';ctx.shadowBlur=b.alive?10:0;ctx.beginPath();ctx.moveTo(x-25,groundY);ctx.lineTo(x-14,groundY-15);ctx.lineTo(x+14,groundY-15);ctx.lineTo(x+25,groundY);ctx.closePath();ctx.fill();ctx.shadowBlur=0;if(b.alive){ctx.fillStyle='#ffd166';const dots=Math.min(10,b.ammo);for(let i=0;i<dots;i++)ctx.fillRect(x-13+(i%5)*6,groundY-11-Math.floor(i/5)*6,3,3)}}
+    function loop(now){if(!running)return;const dt=Math.min(.034,(now-last)/1000||0);last=now;update(dt);draw();if(running)requestAnimationFrame(loop)}
+    function pointFromEvent(e){const t=e.touches&&e.touches[0]?e.touches[0]:e;return{x:t.clientX,y:t.clientY}}
+    function canvasInput(e){if(e.cancelable)e.preventDefault();if(overlay.classList.contains('hidden')){const p=pointFromEvent(e);fire(p.x,p.y)}}
+    if(window.PointerEvent){overlay.addEventListener('pointerup',startGame,{passive:false});canvas.addEventListener('pointerdown',canvasInput,{passive:false})}
+    else{overlay.addEventListener('touchend',startGame,{passive:false});overlay.addEventListener('click',startGame,{passive:false});canvas.addEventListener('touchstart',canvasInput,{passive:false});canvas.addEventListener('mousedown',canvasInput,{passive:false})}
+    overlay.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){startGame(e)}});
+    const pressEvent=window.PointerEvent?'pointerup':'click';
+    pauseBtn.addEventListener(pressEvent,e=>{e.preventDefault();e.stopPropagation();if(!running)return;paused=!paused;pauseBtn.textContent=paused?'Resume':'Pause';showMessage(paused?'Paused':'','#fff',300)});
+    soundBtn.addEventListener(pressEvent,e=>{e.preventDefault();e.stopPropagation();soundOn=!soundOn;soundBtn.textContent=soundOn?'Mute':'Sound';soundBtn.setAttribute('aria-label',soundOn?'Turn sound off':'Turn sound on');if(soundOn)ensureAudio();else if(audioCtx&&audioCtx.state==='running')audioCtx.suspend()});
+    window.addEventListener('resize',resize,{passive:true});window.addEventListener('orientationchange',()=>setTimeout(resize,120),{passive:true});document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused){paused=true;pauseBtn.textContent='Resume'}});
+    function registerGameTool(){
+      const mc=document.modelContext;if(!mc||typeof mc.registerTool!=='function')return;
+      try{void Promise.resolve(mc.registerTool({name:'start_new_skyshield_game',title:'Start a new game',description:'Start or restart Skyshield Command and reset the visible score, wave, cities, and missile supply.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(input){if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw new Error('This action takes no parameters.');running=false;overlay.classList.add('hidden');reset();running=true;last=performance.now();requestAnimationFrame(loop);return{status:'playing',wave,score,missiles:bases.reduce((n,b)=>n+b.ammo,0)}}})).catch(()=>{})}catch(_){}}
+    resize();draw();registerGameTool();
+  })();
+  </script>
+</body>
+</html>
